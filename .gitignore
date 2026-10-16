@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Large or raw sources (re-downloaded by data/fetch_external.py)
+*.pdf
+data/*.zip
+data/usgs_earthquakes.csv
+
+# Internal tooling & session exports
+.commandcode/
+command-code-session-*.html

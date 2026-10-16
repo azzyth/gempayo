@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GempaWaspada — Kapan & Seberapa Besar</title>
+  <meta name="description" content="Prototype prediksi kapan gempa terjadi dan seberapa besar dampaknya, dari katalog BMKG + USGS." />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Lompat ke konten</a>
+
+  <header class="topbar">
+    <div class="topbar__inner">
+      <div class="brand">
+        <span class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4l4 6 3-5 3 6 3-4 3 4" />
+            <path d="M2 20h20" />
+          </svg>
+        </span>
+        <div class="brand__text">
+          <span class="brand__name">GempaWaspada</span>
+          <span class="brand__sub">Kapan &amp; seberapa besar gempa Indonesia</span>
+        </div>
+      </div>
+      <div class="topbar__meta" aria-label="Status model">
+        <span class="badge badge--accent">LightGBM + exposure</span>
+        <span class="badge">USGS M≥5.0 · BMKG 2000–2023</span>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="page">
+    <section class="kpis" aria-label="Ringkasan" id="kpis">
+      <div class="kpi">
+        <span class="kpi__label">Gempa M≥5.0 (USGS)</span>
+        <span class="kpi__value" id="kpi-usgs">—</span>
+        <span class="kpi__hint">24 tahun, seluruh Indonesia</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi__label">Median jeda</span>
+        <span class="kpi__value kpi__value--accent" id="kpi-gap">—</span>
+        <span class="kpi__hint">antar gempa M≥5.0</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi__label">Gempa signifikan (BMKG)</span>
+        <span class="kpi__value" id="kpi-events">—</span>
+        <span class="kpi__hint">yang dirasakan / merusak</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi__label">Dampak Berat</span>
+        <span class="kpi__value kpi__value--danger" id="kpi-berat">—</span>
+        <span class="kpi__hint">≥ 10 korban jiwa</span>
+      </div>
+    </section>
+
+    <div class="workspace">
+      <section class="panel predictor" aria-labelledby="predictor-title">
+        <div class="panel__head">
+          <h1 id="predictor-title" class="panel__title">Seberapa besar dampaknya?</h1>
+          <p class="panel__desc">Masukkan parameter gempa. Model memakai magnitudo, kedalaman, intensitas, tsunami, dan exposure (jarak &amp; kepadatan permukiman).</p>
+        </div>
+
+        <form id="predictor-form" class="form" autocomplete="off">
+          <div class="field">
+            <div class="field__row">
+              <label for="magnitude">Magnitude</label>
+              <output id="magnitude-out" for="magnitude">7.0</output>
+            </div>
+            <input type="range" id="magnitude" min="3" max="9.5" step="0.1" value="7.0" />
+            <div class="field__scale"><span>3</span><span>9.5</span></div>
+          </div>
+
+          <div class="field">
+            <div class="field__row">
+              <label for="depth">Kedalaman (km)</label>
+              <output id="depth-out" for="depth">30</output>
+            </div>
+            <input type="range" id="depth" min="1" max="200" step="1" value="30" />
+            <div class="field__hint">Gempa dangkal (&lt; 70 km) cenderung lebih merusak.</div>
+          </div>
+
+          <div class="field">
+            <div class="field__row">
+              <label for="mmi">Intensitas MMI (dirasakan)</label>
+              <output id="mmi-out" for="mmi">6</output>
+            </div>
+            <input type="range" id="mmi" min="1" max="10" step="1" value="6" />
+            <div class="field__scale"><span>1 (lemah)</span><span>10 (ekstrem)</span></div>
+          </div>
+
+          <div class="field field--inline">
+            <label for="region">Wilayah</label>
+            <select id="region" class="select"></select>
+          </div>
+
+          <label class="switch">
+            <input type="checkbox" id="tsunami" />
+            <span class="switch__track" aria-hidden="true"></span>
+            <span class="switch__label">Beresiko tsunami</span>
+          </label>
+
+          <details class="advanced">
+            <summary>Lokasi (opsional)</summary>
+            <div class="field field--grid">
+              <div class="field">
+                <label for="latitude">Latitude</label>
+                <input type="number" id="latitude" step="0.01" class="input" />
+              </div>
+              <div class="field">
+                <label for="longitude">Longitude</label>
+                <input type="number" id="longitude" step="0.01" class="input" />
+              </div>
+            </div>
+            <div class="field__hint">Kosongkan untuk memakai titik tengah wilayah terpilih.</div>
+          </details>
+        </form>
+
+        <div class="result" id="result" data-state="idle" aria-live="polite">
+          <div class="result__empty" id="result-empty">Sesuaikan parameter untuk melihat prediksi.</div>
+          <div class="result__body" id="result-body" hidden>
+            <div class="result__label">Prediksi tingkat dampak</div>
+            <div class="result__value" id="result-value">—</div>
+            <div class="result__bars" id="result-bars"></div>
+            <div class="result__exposure" id="result-exposure"></div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel seismicity" aria-labelledby="seis-title">
+        <div class="panel__head">
+          <h2 id="seis-title" class="panel__title">Kapan gempa berikutnya?</h2>
+          <p class="panel__desc" id="seis-desc">Laju seismisitas M≥5.0 (katalog USGS).</p>
+        </div>
+        <div class="seis-stat">
+          <span class="seis-stat__value" id="seis-gap">—</span>
+          <span class="seis-stat__label">median jeda antar gempa M≥5.0</span>
+        </div>
+        <ol class="risk-list" id="seis-list"></ol>
+        <div class="trend">
+          <h3 class="trend__title">Tren gempa signifikan per tahun (BMKG)</h3>
+          <svg id="trend-chart" class="trend__chart" role="img" aria-label="Grafik jumlah gempa signifikan per tahun"></svg>
+        </div>
+      </aside>
+    </div>
+
+    <section class="panel performance" aria-labelledby="perf-title">
+      <div class="panel__head">
+        <h2 id="perf-title" class="panel__title">Performa model severity</h2>
+        <p class="panel__desc">LightGBM + exposure, evaluasi stratified 80/20 (test).</p>
+      </div>
+      <div class="perf-grid">
+        <div class="perf-metrics">
+          <div class="metric">
+            <span class="metric__label">Macro-F1</span>
+            <span class="metric__value" id="perf-macro">—</span>
+          </div>
+          <div class="metric">
+            <span class="metric__label">Recall "Berat"</span>
+            <span class="metric__value metric__value--good" id="perf-recall">—</span>
+          </div>
+          <div class="metric">
+            <span class="metric__label">Baseline mayoritas</span>
+            <span class="metric__value" id="perf-baseline">—</span>
+          </div>
+        </div>
+        <div class="confusion" id="confusion" aria-label="Confusion matrix"></div>
+        <div class="distribution" id="distribution" aria-label="Distribusi kelas"></div>
+      </div>
+      <div class="note">
+        <strong>Batasan jujur:</strong> kerusakan = hazard × <em>exposure</em> × kerentanan.
+        Fitur exposure (jarak &amp; kepadatan permukiman) menutup sebagian gap, tapi kerentanan
+        bangunan belum ada. Kelas "Sedang" tetap paling sulit.
+      </div>
+    </section>
+
+    <section class="panel catalog" aria-labelledby="catalog-title">
+      <div class="panel__head panel__head--row">
+        <div>
+          <h2 id="catalog-title" class="panel__title">Katalog gempa signifikan</h2>
+          <p class="panel__desc">307 kejadian BMKG 2000–2023.</p>
+        </div>
+        <label class="filter">
+          <span class="filter__label">Filter dampak</span>
+          <select id="severity-filter" class="select">
+            <option value="">Semua</option>
+            <option value="0">Ringan</option>
+            <option value="1">Sedang</option>
+            <option value="2">Berat</option>
+          </select>
+        </label>
+      </div>
+      <div class="table-wrap">
+        <table class="table" id="catalog-table">
+          <thead>
+            <tr>
+              <th data-sort="year">Tahun</th>
+              <th data-sort="wilayah">Wilayah</th>
+              <th data-sort="region">Region</th>
+              <th data-sort="magnitude" class="num">Mag</th>
+              <th data-sort="depth" class="num">Kedalaman</th>
+              <th data-sort="mmi" class="num">MMI</th>
+              <th data-sort="tsunami">Tsunami</th>
+              <th data-sort="severity">Dampak</th>
+            </tr>
+          </thead>
+          <tbody id="catalog-body"></tbody>
+        </table>
+      </div>
+      <div class="catalog__meta" id="catalog-meta"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>GempaWaspada — prototype Hackathon JOINTS UGM 2026 · tema Sustainability</span>
+    <span>Data: USGS + GeoNames + katalog BMKG 2000–2023</span>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

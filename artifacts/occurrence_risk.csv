@@ -1,0 +1,9 @@
+Region,n,first_year,last_year,max_mag,lambda_per_year,p_ge1_next_year
+Jawa-selatan,88,2000,2023,7.3,3.667,0.974
+Sulawesi-utara/Papua-barat,60,2000,2023,7.9,2.5,0.918
+Sumatra utara,58,2000,2023,9.0,2.417,0.911
+Nusa-selatan,31,2000,2022,7.5,1.292,0.725
+Sumatra/NSB-barat,29,2000,2020,7.9,1.208,0.701
+Maluku/Banda,21,2004,2023,7.9,0.875,0.583
+NTT/Timor-selatan,11,2006,2023,7.1,0.458,0.367
+lain,9,2011,2022,6.2,0.375,0.313
