@@ -9,7 +9,3 @@ env/
 *.pdf
 data/*.zip
 data/usgs_earthquakes.csv
-
-# Internal tooling & session exports
-.commandcode/
-command-code-session-*.html
